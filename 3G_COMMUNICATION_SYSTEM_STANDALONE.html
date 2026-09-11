@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3G Real-Time Communication System | Mobile Video Surveillance & Emergency Monitoring</title>
+  <meta name="description" content="Complete standalone interactive simulation of a 3G communication system for real-time mobile video surveillance and emergency monitoring.">
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 & ReactDOM via CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel for inline JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    :root {
+      --font-sans: 'Inter', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-display: 'Outfit', sans-serif;
+    }
+    body {
+      font-family: var(--font-sans);
+      background-color: #030712;
+      color: #f3f4f6;
+      overflow-x: hidden;
+      margin: 0;
+      padding: 0;
+    }
+    .telecom-grid {
+      background-size: 32px 32px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    }
+    .surveillance-scanlines {
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%),
+                  linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      background-size: 100% 3px, 4px 100%;
+      pointer-events: none;
+    }
+    .glow-cyan {
+      box-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.35);
+    }
+    .glow-red {
+      box-shadow: 0 0 25px 2px rgba(239, 68, 68, 0.5);
+      animation: pulse-red 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse-red {
+      0%, 100% { opacity: 1; box-shadow: 0 0 25px 2px rgba(239, 68, 68, 0.6); }
+      50% { opacity: 0.85; box-shadow: 0 0 10px 0px rgba(239, 68, 68, 0.2); }
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div id="root"></div>
+
+  <!-- Inline Application Script using Babel Standalone -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // SVG Icons Helper
+    const Icon = ({ name, className = "w-4 h-4" }) => {
+      const icons = {
+        radio: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>,
+        video: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>,
+        play: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="6 3 20 12 6 21 6 3"/></svg>,
+        pause: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="4" height="16" x="6" y="4"/><rect width="4" height="16" x="14" y="4"/></svg>,
+        reset: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>,
+        forward: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>,
+        car: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C1.4 11.2 1 12 1 12.8V16c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>,
+        alarm: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+        network: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></svg>,
+        sliders: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="4" x1="21" y1="4" y2="14"/><line x1="4" x1="21" y1="18" y2="20"/><line x1="12" x1="21" y1="2" y2="8"/><line x1="12" x1="21" y1="12" y2="22"/><line x1="20" x1="21" y1="4" y2="10"/><line x1="20" x1="21" y1="14" y2="20"/><line x1="1" x1="7" y1="14" y2="14"/><line x1="9" x1="15" y1="8" y2="8"/><line x1="17" x1="23" y1="10" y2="10"/></svg>,
+        calc: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>,
+        shield: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+        clock: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+        chart: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>,
+        book: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>,
+        check: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+        crosshair: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg>,
+        eye: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>,
+        send: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>,
+        close: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      };
+      return icons[name] || <span />;
+    };
+
+    // System Static Data
+    const SYSTEM_NODES = [
+      {
+        id: 'camera-unit',
+        name: 'Mobile Camera Unit',
+        shortName: 'Mobile Camera',
+        subtitle: 'Edge Capture & 3G UE',
+        category: 'User Equipment',
+        purpose: 'Captures raw high-definition video and ambient audio, compresses the media into optimized digital streams, and transmits via 3G modem.',
+        functions: [
+          'Visual & audio sensor acquisition (Camera sensor & directional mic)',
+          'Hardware video encoding (H.264 Baseline Profile / MPEG-4 Part 2)',
+          'Packetization into RTP/UDP/IP payloads',
+          '3G/WCDMA User Equipment (UE) modem transmission',
+          'Power management via internal high-capacity battery'
+        ],
+        dataHandled: 'Raw video frames, compressed video bitstream (256 kbps baseline), audio packets, telemetry.',
+        roleInRealTime: 'Originates delay-sensitive video, audio, and emergency alarm packets. Adjusts encoder rate dynamically.',
+        subComponents: ['Optical Lens & CMOS Sensor', 'Omni Microphone', 'Hardware Video Encoder', '3G WCDMA Modem (UE)', 'Li-ion Battery Pack']
+      },
+      {
+        id: 'node-b',
+        name: 'Node B (Base Station)',
+        shortName: 'Node B',
+        subtitle: 'WCDMA Radio Access',
+        category: 'Radio Access Network',
+        purpose: 'Provides physical WCDMA radio layer connectivity between mobile camera units and the fixed terrestrial radio network.',
+        functions: [
+          'WCDMA radio frequency transmission and reception (5 MHz carrier)',
+          'Spreading and despreading using orthogonal channelization codes (OVSF)',
+          'Inner-loop fast power control (1,500 Hz slot rate)',
+          'Air interface modulation, demodulation, and channel coding'
+        ],
+        dataHandled: 'Air interface radio frames, WCDMA chip-level symbols (3.84 Mcps), dedicated physical channels (DPCH/PRACH).',
+        roleInRealTime: 'Ensures reliable low-latency wireless transmission over the wireless link and monitors instantaneous channel fading.',
+        subComponents: ['Radio Transceiver (TRX)', 'Power Amplifiers', 'Duplexer & Antennas', 'Baseband DSP Unit']
+      },
+      {
+        id: 'rnc',
+        name: 'Radio Network Controller (RNC)',
+        shortName: 'RNC',
+        subtitle: 'Radio Resource Management',
+        category: 'Radio Access Network',
+        purpose: 'Governs all radio resources across multiple Node Bs, coordinates seamless handovers, and manages admission control.',
+        functions: [
+          'Radio Resource Management (RRM) & dynamic channel allocation',
+          'Soft handover and harder handover control between cells',
+          'Admission control for new real-time voice and video sessions',
+          'Radio Access Bearer (RAB) establishment and QoS mapping'
+        ],
+        dataHandled: 'RLC protocol data units (PDUs), radio signaling messages (NBAP, RRC, RANAP), user payload frames.',
+        roleInRealTime: 'Prioritizes real-time media streams and executes seamless soft handover without dropping surveillance video.',
+        subComponents: ['Call Control Processor', 'Frame Processing Unit', 'ATM/IP Switch Fabric']
+      },
+      {
+        id: 'packet-core',
+        name: '3G Packet Core (SGSN / GGSN)',
+        shortName: '3G Packet Core',
+        subtitle: 'Serving & Gateway GPRS Nodes',
+        category: 'Core Network',
+        purpose: 'Performs packet-switched routing, subscriber authentication, mobility management, and QoS enforcement.',
+        functions: [
+          'SGSN: Mobility management, location tracking, and logical link control',
+          'GGSN: Gateway to external IP networks, IP address allocation (DHCP/Radius)',
+          '3GPP AKA mutual subscriber authentication and cryptographic ciphering',
+          'Packet Data Protocol (PDP) context activation & management'
+        ],
+        dataHandled: 'GTP-U (GPRS Tunneling Protocol User plane) tunnels, IP packets, charging records (CDRs).',
+        roleInRealTime: 'Enforces end-to-end QoS and maintains IP address persistence during mobility.',
+        subComponents: ['SGSN (Serving GPRS Support Node)', 'GGSN (Gateway GPRS Support Node)', 'HLR/AuC Connector']
+      },
+      {
+        id: 'private-ip',
+        name: 'Private IP Network / Internet',
+        shortName: 'Private IP Network',
+        subtitle: 'Secure Core Transport',
+        category: 'Transport',
+        purpose: 'Transports routed IP packets securely across private leased lines or encrypted VPN tunnels to the application server.',
+        functions: [
+          'IP packet routing and high-speed multi-gigabit switching',
+          'IPsec VPN tunneling for end-to-end data confidentiality',
+          'DiffServ / MPLS Traffic Engineering (QoS preservation)'
+        ],
+        dataHandled: 'Encapsulated IPsec ESP packets, RTP/RTCP surveillance video streams, RTSP messages.',
+        roleInRealTime: 'Maintains bounded latency and low packet loss across the wide area network.',
+        subComponents: ['Edge Routers', 'IPsec VPN Concentrator', 'Next-Gen Firewall']
+      },
+      {
+        id: 'app-server',
+        name: 'Application / Streaming Server',
+        shortName: 'Streaming Server',
+        subtitle: 'Session & Media Gateway',
+        category: 'Application',
+        purpose: 'Terminates camera streaming sessions, distributes live feeds to authorized monitoring terminals, and records footage.',
+        functions: [
+          'RTSP/SIP session initiation, teardown, and heartbeat monitoring',
+          'RTP media packet ingestion and jitter buffer smoothing',
+          'Stream fan-out and re-transmission to multiple operator consoles',
+          'Emergency alarm processing, notification dispatch, and event logging'
+        ],
+        dataHandled: 'Inbound RTP streams, outbound replicated unicast streams, RTSP commands, alarm event webhooks.',
+        roleInRealTime: 'Central relay point for real-time monitoring; detects packet drop and triggers rapid rate adaptation.',
+        subComponents: ['RTSP/RTMP Media Server', 'Session Controller', 'Event Dispatch Engine', 'NVR Storage']
+      },
+      {
+        id: 'monitoring-terminal',
+        name: 'Monitoring Terminal / Center',
+        shortName: 'Monitoring Console',
+        subtitle: 'Operator Display & PTZ Control',
+        category: 'Terminal',
+        purpose: 'Decodes compressed video in real time, displays live surveillance feeds to control-room operators, and facilitates emergency command.',
+        functions: [
+          'Hardware-accelerated H.264/MPEG-4 video decoding',
+          'Low-latency multi-channel surveillance matrix display',
+          'Audio playback and two-way voice channel to mobile unit',
+          'Camera PTZ control commands transmission',
+          'Emergency alert audio-visual popups and operator dispatch interface'
+        ],
+        dataHandled: 'Decoded video frames, audio samples, operator control commands, real-time diagnostic telemetry.',
+        roleInRealTime: 'Final consumer of the surveillance stream and origin of operator commands. Requires low latency (< 350 ms).',
+        subComponents: ['Workstation GPU Decoder', 'Ultra-Wide Operator Displays', 'PTZ Joystick Controller']
+      }
+    ];
+
+    const SCENARIO_STEPS = [
+      { step: 1, title: 'Camera Boot & 3G UE Registration', state: 'CONNECTED', desc: 'The mobile camera powers on. Its 3G modem registers with Node B, completes 3GPP AKA authentication with Packet Core, and establishes a PDP context with IP 10.240.18.42.' },
+      { step: 2, title: 'Video Stream Start & QoS Allocation', state: 'STREAMING', desc: 'Camera initiates RTSP session. RNC allocates a guaranteed 256 kbps Streaming Radio Access Bearer (RAB) to protect video frames.' },
+      { step: 3, title: 'Normal Mobile Patrol & Link Maintenance', state: 'MOVING', desc: 'Patrol vehicle moves through Cell A. Fast inner-loop power control at 1,500 Hz maintains optimal SIR at -8.2 dB Ec/No.' },
+      { step: 4, title: 'Cell Boundary Reached & Seamless Handover', state: 'HANDOVER', desc: 'Vehicle approaches cell edge. RNC initiates make-before-break WCDMA soft handover, transferring connection to Cell B with 0 dropped video frames.' },
+      { step: 5, title: 'Network Congestion & QoS Traffic Protection', state: 'CONGESTED', desc: 'Heavy background traffic occurs. Strict priority queueing throttles low-priority logs while real-time video/audio stream cleanly.' },
+      { step: 6, title: 'Emergency Alarm Trigger & Immediate Dispatch', state: 'EMERGENCY', desc: 'Tactical emergency tripped. High-priority ALARM packet preempts normal traffic and triggers operator strobe in milliseconds.' },
+      { step: 7, title: 'Session Teardown & Secure Audit Archiving', state: 'SESSION_END', desc: 'Mission concludes. Radio bearer released cleanly and cryptographic session audit log is committed to archive.' }
+    ];
+
+    // Main App Component
+    function App() {
+      const [activeTab, setActiveTab] = useState('dashboard');
+      const [systemState, setSystemState] = useState('IDLE');
+      const [isTransmitting, setIsTransmitting] = useState(false);
+      const [isMobilityRunning, setIsMobilityRunning] = useState(false);
+      const [selectedNode, setSelectedNode] = useState(null);
+      const [activeNodePulse, setActiveNodePulse] = useState(null);
+      const [packets, setPackets] = useState([]);
+      const [activeCamId, setActiveCamId] = useState('CAM-01');
+      const [visionMode, setVisionMode] = useState('NORMAL');
+      const [showCrosshairs, setShowCrosshairs] = useState(true);
+      const [showMotionBox, setShowMotionBox] = useState(true);
+      const [emergencyAlert, setEmergencyAlert] = useState(null);
+
+      // Congestion & Telemetry State
+      const [networkLoad, setNetworkLoad] = useState('LOW');
+      const [signalDbm, setSignalDbm] = useState(-80);
+      const [activeCameras, setActiveCameras] = useState(1);
+      const [cameraBitrate, setCameraBitrate] = useState(256);
+      const [admissionStatus, setAdmissionStatus] = useState('NORMAL');
+      const [telemetry, setTelemetry] = useState({
+        bitrateKbps: 256,
+        latencyMs: 142,
+        packetLossPct: 0.1,
+        packetsSent: 0,
+        packetsReceived: 0,
+        packetsDropped: 0,
+        queueHigh: 0,
+        queueLow: 0,
+        emergencyCount: 0
+      });
+
+      // Mobility State
+      const [handoverState, setHandoverState] = useState({
+        activeCell: 'Cell A',
+        targetCell: null,
+        status: 'IDLE',
+        cellASignal: -8.2,
+        cellBSignal: -17.5,
+        cellCSignal: -22.0,
+        distanceKm: 0.8,
+        handoversCount: 0
+      });
+
+      // Scenario State
+      const [scenarioIndex, setScenarioIndex] = useState(0);
+      const [isScenarioRunning, setIsScenarioRunning] = useState(false);
+      const [scenarioProgress, setScenarioProgress] = useState(0);
+      const [scenarioSpeed, setScenarioSpeed] = useState(1);
+
+      // Event Logs & Audit Logs
+      const [eventLogs, setEventLogs] = useState([
+        { id: 1, time: '21:00:00', source: 'SYSTEM', msg: 'System initialized. 3G UMTS network architecture standing by.', type: 'INFO' },
+        { id: 2, time: '21:00:01', source: 'NODE-B', msg: 'WCDMA Carrier 2100 MHz active. 3.84 Mcps chip clock synchronized.', type: 'INFO' },
+        { id: 3, time: '21:00:02', source: 'RNC', msg: 'Radio Network Controller ready. Radio Bearer pool initialized.', type: 'INFO' }
+      ]);
+
+      const [auditLogs, setAuditLogs] = useState([
+        { id: 1, time: '21:00:01', device: 'CAMERA-01', user: 'Operator-01', action: 'System Ready Check', status: 'SUCCESS', details: 'USIM hardware authenticated.' }
+      ]);
+
+      const nodeSeq = ['camera-unit', 'node-b', 'rnc', 'packet-core', 'private-ip', 'app-server', 'monitoring-terminal'];
+
+      const addLog = (source, msg, type = 'INFO') => {
+        const time = new Date().toTimeString().split(' ')[0];
+        setEventLogs(prev => [{ id: Date.now() + Math.random(), time, source, msg, type }, ...prev.slice(0, 79)]);
+      };
+
+      const addAudit = (device, user, action, status, details) => {
+        const time = new Date().toTimeString().split(' ')[0];
+        setAuditLogs(prev => [{ id: Date.now(), time, device, user, action, status, details }, ...prev.slice(0, 39)]);
+      };
+
+      // Admission Control Check
+      useEffect(() => {
+        if (activeCameras * cameraBitrate > 3840) {
+          setAdmissionStatus('REJECTED');
+          addLog('RNC-ADMISSION', `Admission Control: Rejected session for Camera #${activeCameras}. Insufficient capacity.`, 'WARNING');
+        } else {
+          setAdmissionStatus('NORMAL');
+        }
+      }, [activeCameras, cameraBitrate]);
+
+      // Manual Packet Sender
+      const sendPacket = (type, isAlarm = false) => {
+        const colors = { VIDEO: '#06b6d4', AUDIO: '#a855f7', CONTROL: '#f59e0b', ALARM: '#ef4444', BACKGROUND: '#64748b' };
+        const pkt = {
+          id: Date.now() + Math.random(),
+          type,
+          priority: isAlarm || type === 'ALARM' ? 'CRITICAL' : type === 'BACKGROUND' ? 'LOW' : 'HIGH',
+          currentLink: 0,
+          progress: 0,
+          color: colors[type] || '#06b6d4',
+          label: type,
+          isAlarm
+        };
+        setPackets(prev => [...prev, pkt]);
+        setTelemetry(t => ({
+          ...t,
+          packetsSent: t.packetsSent + 1,
+          queueHigh: pkt.priority !== 'LOW' ? (t.queueHigh + 1) % 15 : t.queueHigh,
+          queueLow: pkt.priority === 'LOW' ? (t.queueLow + 1) % 12 : t.queueLow
+        }));
+        addLog('CAMERA-01', `Manual ${type} packet injected into radio buffer.`, isAlarm ? 'EMERGENCY' : 'INFO');
+      };
+
+      // Transmission Packet Interval
+      useEffect(() => {
+        if (!isTransmitting) return;
+        const interval = setInterval(() => {
+          const r = Math.random();
+          let type = 'VIDEO';
+          if (r > 0.85) type = 'AUDIO';
+          else if (r > 0.75) type = 'CONTROL';
+          else if (r > 0.65) type = 'BACKGROUND';
+
+          if (networkLoad === 'CONGESTED' && type === 'BACKGROUND' && Math.random() > 0.3) {
+            setTelemetry(t => ({ ...t, packetsDropped: t.packetsDropped + 1 }));
+            return;
+          }
+          sendPacket(type, false);
+        }, networkLoad === 'CONGESTED' ? 750 : 500);
+
+        return () => clearInterval(interval);
+      }, [isTransmitting, networkLoad]);
+
+      // Packet Physics RAF
+      useEffect(() => {
+        if (packets.length === 0) return;
+        const anim = requestAnimationFrame(() => {
+          setPackets(prev => {
+            const next = [];
+            for (const pkt of prev) {
+              let spd = 0.04;
+              if (pkt.isAlarm) spd = 0.07;
+              if (pkt.priority === 'LOW' && networkLoad === 'CONGESTED') spd = 0.015;
+              const prog = pkt.progress + spd;
+              if (prog >= 1) {
+                const nextLink = pkt.currentLink + 1;
+                const hitNode = nodeSeq[nextLink];
+                setActiveNodePulse(hitNode);
+                setTimeout(() => setActiveNodePulse(null), 250);
+                if (nextLink >= 6) {
+                  setTelemetry(t => ({ ...t, packetsReceived: t.packetsReceived + 1 }));
+                } else {
+                  next.push({ ...pkt, currentLink: nextLink, progress: 0 });
+                }
+              } else {
+                next.push({ ...pkt, progress: prog });
+              }
+            }
+            return next;
+          });
+        });
+        return () => cancelAnimationFrame(anim);
+      }, [packets, networkLoad]);
+
+      // Mobility & Handover Loop
+      useEffect(() => {
+        if (!isMobilityRunning) return;
+        const interval = setInterval(() => {
+          setHandoverState(prev => {
+            let dist = prev.distanceKm + 0.15;
+            if (dist > 9.0) dist = 0.5;
+            const aSig = Math.max(-25, -6.5 - Math.pow(dist - 1.5, 2) * 1.5);
+            const bSig = Math.max(-25, -6.5 - Math.pow(dist - 4.5, 2) * 1.5);
+            const cSig = Math.max(-25, -6.5 - Math.pow(dist - 7.5, 2) * 1.5);
+
+            let st = prev.status;
+            let active = prev.activeCell;
+            let target = prev.targetCell;
+            let count = prev.handoversCount;
+
+            if (active === 'Cell A' && dist >= 2.8 && dist <= 3.4) {
+              if (dist >= 3.0 && st !== 'HANDOVER_INITIATED') {
+                st = 'HANDOVER_INITIATED';
+                target = 'Cell B';
+                addLog('RNC-HANDOVER', 'HANDOVER INITIATED: Cell A -> Cell B Active Set Update (Soft Handover)', 'WARNING');
+                setSystemState('HANDOVER');
+              }
+            } else if (active === 'Cell A' && dist > 3.4) {
+              st = 'HANDOVER_SUCCESSFUL';
+              active = 'Cell B';
+              target = null;
+              count += 1;
+              addLog('RNC-HANDOVER', 'HANDOVER SUCCESSFUL: Transferred seamlessly to Cell B. 0 frame freeze.', 'SUCCESS');
+              setSystemState(isTransmitting ? 'STREAMING' : 'MOVING');
+            }
+            return { ...prev, distanceKm: parseFloat(dist.toFixed(2)), cellASignal: parseFloat(aSig.toFixed(1)), cellBSignal: parseFloat(bSig.toFixed(1)), cellCSignal: parseFloat(cSig.toFixed(1)), activeCell: active, targetCell: target, status: st, handoversCount: count };
+          });
+        }, 600);
+        return () => clearInterval(interval);
+      }, [isMobilityRunning, isTransmitting]);
+
+      // Surveillance Video Canvas Rendering
+      const canvasRef = useRef(null);
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        let anim;
+        let tx = 180, ty = 120, vx = 0.8, vy = 0.4;
+
+        const render = () => {
+          const w = canvas.width, h = canvas.height;
+          ctx.fillStyle = visionMode === 'IR_THERMAL' ? '#180728' : '#060c18';
+          ctx.fillRect(0, 0, w, h);
+
+          if (!isTransmitting && systemState !== 'STREAMING' && systemState !== 'MOVING' && systemState !== 'EMERGENCY') {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 15px "JetBrains Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('CAMERA STANDBY / TRANSMISSION PAUSED', w / 2, h / 2 - 10);
+            ctx.font = '12px "Inter", sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('Click "START LIVE TRANSMISSION" above to establish 3G video uplink', w / 2, h / 2 + 15);
+            return;
+          }
+
+          // Horizon & Buildings
+          ctx.strokeStyle = visionMode === 'IR_THERMAL' ? '#581c87' : '#1e293b';
+          ctx.beginPath(); ctx.moveTo(0, h * 0.65); ctx.lineTo(w, h * 0.65); ctx.stroke();
+          ctx.fillStyle = visionMode === 'IR_THERMAL' ? '#3b0764' : '#0a1526';
+          ctx.fillRect(50, h * 0.35, 90, h * 0.3); ctx.fillRect(170, h * 0.28, 120, h * 0.37); ctx.fillRect(320, h * 0.4, 110, h * 0.25);
+
+          // Moving Vehicle
+          tx += vx; ty += vy;
+          if (tx > w - 100 || tx < 80) vx *= -1;
+          if (ty > h * 0.75 || ty < h * 0.55) vy *= -1;
+          ctx.fillStyle = visionMode === 'IR_THERMAL' ? '#ef4444' : '#334155';
+          ctx.fillRect(tx, ty, 60, 24);
+          ctx.fillStyle = visionMode === 'IR_THERMAL' ? '#fbbf24' : '#1e293b';
+          ctx.fillRect(tx + 12, ty - 12, 34, 12);
+
+          // Motion Box
+          if (showMotionBox) {
+            ctx.strokeStyle = systemState === 'EMERGENCY' ? '#ef4444' : '#22c55e';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(tx - 8, ty - 18, 76, 50);
+            ctx.fillStyle = systemState === 'EMERGENCY' ? '#ef4444' : '#22c55e';
+            ctx.font = '10px "JetBrains Mono", monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(systemState === 'EMERGENCY' ? '⚠ ALERT: TARGET 01' : 'TRACKING: PATROL-V3', tx - 8, ty - 22);
+          }
+
+          // Crosshairs
+          if (showCrosshairs) {
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(w / 2 - 20, h / 2); ctx.lineTo(w / 2 + 20, h / 2);
+            ctx.moveTo(w / 2, h / 2 - 20); ctx.lineTo(w / 2, h / 2 + 20);
+            ctx.stroke();
+          }
+
+          // Noise on Congestion or Poor Signal
+          if (networkLoad === 'CONGESTED' || signalDbm < -95) {
+            for (let i = 0; i < 15; i++) {
+              ctx.fillStyle = Math.random() > 0.5 ? 'rgba(6, 182, 212, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+              ctx.fillRect(Math.random() * w, Math.random() * h, 40, 8);
+            }
+          }
+
+          anim = requestAnimationFrame(render);
+        };
+        anim = requestAnimationFrame(render);
+        return () => cancelAnimationFrame(anim);
+      }, [isTransmitting, systemState, visionMode, showCrosshairs, showMotionBox, networkLoad, signalDbm]);
+
+      // Telemetry update interval
+      useEffect(() => {
+        const interval = setInterval(() => {
+          let lat = 140 + (networkLoad === 'CONGESTED' ? 180 : networkLoad === 'HIGH' ? 80 : 0) + (signalDbm < -95 ? 60 : 0);
+          let loss = networkLoad === 'CONGESTED' ? 5.8 : networkLoad === 'HIGH' ? 2.4 : 0.1;
+          setTelemetry(t => ({
+            ...t,
+            bitrateKbps: isTransmitting ? activeCameras * cameraBitrate : 0,
+            latencyMs: Math.round(lat + (Math.random() * 6 - 3)),
+            packetLossPct: parseFloat(loss.toFixed(1))
+          }));
+        }, 1000);
+        return () => clearInterval(interval);
+      }, [isTransmitting, networkLoad, signalDbm, activeCameras, cameraBitrate]);
+
+      // Emergency Trigger
+      const triggerEmergency = () => {
+        setSystemState('EMERGENCY');
+        const time = new Date().toTimeString().split(' ')[0];
+        setEmergencyAlert({
+          msg: 'Critical emergency alarm tripped by mobile unit CAMERA-01 (Patrol Van 3). Priority preemption active.',
+          time
+        });
+        setTelemetry(t => ({ ...t, emergencyCount: t.emergencyCount + 1 }));
+        sendPacket('ALARM', true);
+        addLog('EMERGENCY', '🚨 EMERGENCY ALARM: Alarm message received from CAMERA-01 (Priority: HIGH)', 'EMERGENCY');
+        addAudit('CAMERA-01', 'Operator-01', 'EMERGENCY ALARM', 'HIGH PRIORITY', 'Tactical alarm broadcast to control room.');
+      };
+
+      // Scenario Automation
+      const runFullScenario = () => {
+        setSystemState('REGISTERING');
+        setIsScenarioRunning(true);
+        setScenarioIndex(0);
+        setScenarioProgress(0);
+        addLog('SCENARIO', 'Automated 7-stage 3G operational scenario initiated.', 'INFO');
+        addAudit('CAMERA-01', 'Operator-01', 'Scenario Run', 'SUCCESS', '7-stage sequence initiated');
+      };
+
+      useEffect(() => {
+        if (!isScenarioRunning) return;
+        const step = SCENARIO_STEPS[scenarioIndex];
+        const timer = setTimeout(() => {
+          setSystemState(step.state);
+          if (step.step === 2) setIsTransmitting(true);
+          if (step.step === 3) setIsMobilityRunning(true);
+          if (step.step === 5) setNetworkLoad('CONGESTED');
+          if (step.step === 6) triggerEmergency();
+          if (step.step === 7) {
+            setIsTransmitting(false);
+            setIsMobilityRunning(false);
+            setNetworkLoad('LOW');
+            setIsScenarioRunning(false);
+          }
+          if (scenarioIndex < SCENARIO_STEPS.length - 1) {
+            setScenarioIndex(i => i + 1);
+          } else {
+            setIsScenarioRunning(false);
+            addLog('SCENARIO', '7-stage 3G operational scenario completed successfully.', 'SUCCESS');
+          }
+        }, 4000 / scenarioSpeed);
+        return () => clearTimeout(timer);
+      }, [isScenarioRunning, scenarioIndex, scenarioSpeed]);
+
+      const resetSystem = () => {
+        setSystemState('IDLE');
+        setIsTransmitting(false);
+        setIsMobilityRunning(false);
+        setPackets([]);
+        setNetworkLoad('LOW');
+        setSignalDbm(-80);
+        setActiveCameras(1);
+        setEmergencyAlert(null);
+        setIsScenarioRunning(false);
+        setHandoverState({ activeCell: 'Cell A', targetCell: null, status: 'IDLE', cellASignal: -8.2, cellBSignal: -17.5, cellCSignal: -22.0, distanceKm: 0.8, handoversCount: 0 });
+        addLog('SYSTEM', 'System reset to initial state. Ready for new demonstration.', 'INFO');
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200 font-sans">
+          {/* Header */}
+          <header className="border-b border-slate-800 bg-slate-950/90 sticky top-0 z-40 px-4 lg:px-8 py-3.5 backdrop-blur shadow-xl">
+            <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-cyan-950 border border-cyan-800 text-cyan-400">
+                  <Icon name="radio" className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-lg font-bold text-white font-['Outfit'] m-0">3G Real-Time Communication System</h1>
+                    <span className="text-[10px] uppercase font-mono font-semibold px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">
+                      Simulation / Educational Model
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 m-0">Real-Time Mobile Video Surveillance & Emergency Monitoring • UMTS WCDMA FDD</p>
+                </div>
+              </div>
+
+              <div className="flex items-center flex-wrap gap-2">
+                <div className={`px-3 py-1.5 rounded-lg border text-xs font-mono font-bold ${
+                  systemState === 'STREAMING' ? 'bg-cyan-950 text-cyan-300 border-cyan-500' :
+                  systemState === 'EMERGENCY' ? 'bg-red-950 text-red-300 border-red-500 glow-red' :
+                  systemState === 'CONGESTED' ? 'bg-amber-950 text-amber-300 border-amber-600' :
+                  'bg-slate-800 text-slate-300 border-slate-700'
+                }`}>
+                  ● {systemState}
+                </div>
+
+                <button
+                  onClick={() => setIsTransmitting(!isTransmitting)}
+                  className={`px-3.5 py-1.5 rounded-lg font-medium text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                    isTransmitting ? 'bg-amber-600/25 text-amber-300 border border-amber-500/50' : 'bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold'
+                  }`}
+                >
+                  <Icon name={isTransmitting ? "pause" : "play"} className="w-3.5 h-3.5" />
+                  <span>{isTransmitting ? 'Pause Stream' : 'Start Live Transmission'}</span>
+                </button>
+
+                <button
+                  onClick={runFullScenario}
+                  disabled={isScenarioRunning}
+                  className="px-3 py-1.5 rounded-lg font-medium text-xs bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                >
+                  <Icon name="forward" className="w-3.5 h-3.5" />
+                  <span>Run Full Scenario</span>
+                </button>
+
+                <button
+                  onClick={() => setIsMobilityRunning(!isMobilityRunning)}
+                  className={`px-3 py-1.5 rounded-lg font-medium text-xs flex items-center gap-1.5 border cursor-pointer ${
+                    isMobilityRunning ? 'bg-blue-600/25 text-blue-300 border-blue-500' : 'bg-slate-800 text-slate-300 border-slate-700'
+                  }`}
+                >
+                  <Icon name="car" className="w-3.5 h-3.5" />
+                  <span>{isMobilityRunning ? 'Patrol Active' : 'Start Mobility'}</span>
+                </button>
+
+                <button
+                  onClick={triggerEmergency}
+                  className="px-3.5 py-1.5 rounded-lg font-bold text-xs bg-red-600 hover:bg-red-500 text-white flex items-center gap-1.5 shadow-lg animate-bounce hover:animate-none cursor-pointer"
+                >
+                  <Icon name="alarm" className="w-3.5 h-3.5" />
+                  <span>Trigger Emergency Alarm</span>
+                </button>
+
+                <button
+                  onClick={resetSystem}
+                  className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 cursor-pointer"
+                  title="Reset System"
+                >
+                  <Icon name="reset" className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Navigation Tabs */}
+          <nav className="bg-slate-900/80 border-b border-slate-800 px-4 lg:px-8 py-2 sticky top-[65px] z-30 backdrop-blur overflow-x-auto">
+            <div className="max-w-7xl mx-auto flex items-center gap-1.5">
+              {[
+                { id: 'dashboard', label: 'Live Surveillance', icon: 'video', badge: telemetry.bitrateKbps > 0 ? `${telemetry.bitrateKbps} kbps` : null },
+                { id: 'architecture', label: '3G Architecture & Packets', icon: 'network', badge: `${telemetry.packetsSent} pkts` },
+                { id: 'qos', label: 'QoS & Congestion', icon: 'sliders', badge: admissionStatus === 'REJECTED' ? 'REJECTED' : null },
+                { id: 'mobility', label: 'Mobility & Handover', icon: 'car', badge: handoverState.activeCell },
+                { id: 'calculator', label: 'Capacity Calculator', icon: 'calc', badge: '5.12 Mbps Model' },
+                { id: 'security', label: 'Security & 3GPP AKA', icon: 'shield', badge: 'AKA Secure' },
+                { id: 'timeline', label: 'Operation Scenario', icon: 'clock', badge: '7 Stages' },
+                { id: 'analytics', label: 'Telemetry & Charts', icon: 'chart', badge: `${telemetry.latencyMs} ms` },
+                { id: 'reference', label: 'Specs & 3G Guide', icon: 'book', badge: 'Standards' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                    activeTab === tab.id
+                      ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
+                  }`}
+                >
+                  <Icon name={tab.icon} className="w-3.5 h-3.5" />
+                  <span>{tab.label}</span>
+                  {tab.badge && (
+                    <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                      tab.badge === 'REJECTED' ? 'bg-red-950 text-red-400 border border-red-800' : 'bg-cyan-950 text-cyan-400 border border-cyan-800'
+                    }`}>
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          {/* Main Views Container */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6">
+            {/* View 1: Dashboard / Live Surveillance */}
+            {activeTab === 'dashboard' && (
+              <div className="space-y-6">
+                {emergencyAlert && (
+                  <div className="rounded-xl border border-red-500 bg-red-950/80 p-3.5 flex items-center justify-between text-red-200 glow-red">
+                    <div className="flex items-center gap-3">
+                      <Icon name="alarm" className="w-5 h-5 text-red-400 animate-bounce" />
+                      <div>
+                        <strong className="text-white font-mono text-sm block">🚨 EMERGENCY ALERT ENGAGED</strong>
+                        <span className="text-xs text-red-300">{emergencyAlert.msg}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => setEmergencyAlert(null)} className="px-3 py-1 rounded bg-red-800 hover:bg-red-700 text-white text-xs font-mono font-bold cursor-pointer">
+                      Acknowledge
+                    </button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Surveillance Feed */}
+                  <div className="lg:col-span-8 space-y-3">
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-2xl relative">
+                      <div className="bg-slate-950/90 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between text-xs font-mono">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-2.5 h-2.5 rounded-full ${isTransmitting ? 'bg-red-500 animate-ping' : 'bg-slate-600'}`} />
+                          <span className={`font-bold ${isTransmitting ? 'text-red-400' : 'text-slate-500'}`}>{isTransmitting ? 'LIVE REC' : 'STANDBY'}</span>
+                          <span className="text-slate-600">|</span>
+                          <span className="text-cyan-400 font-bold">{activeCamId}</span>
+                          <span className="text-slate-400 hidden sm:inline">(Mobile Patrol Unit Alpha)</span>
+                        </div>
+                        <div className="text-cyan-300 font-bold">{telemetry.bitrateKbps} kbps • H.264 Baseline</div>
+                      </div>
+
+                      <div className="relative aspect-video bg-slate-950 flex items-center justify-center overflow-hidden">
+                        <canvas ref={canvasRef} width={640} height={360} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 surveillance-scanlines opacity-50 pointer-events-none" />
+                      </div>
+
+                      <div className="bg-slate-950/90 border-t border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2">
+                          {['CAM-01', 'CAM-02', 'CAM-03'].map(cam => (
+                            <button
+                              key={cam}
+                              onClick={() => setActiveCamId(cam)}
+                              className={`px-2.5 py-1 rounded font-mono font-bold cursor-pointer ${activeCamId === cam ? 'bg-cyan-600 text-slate-950' : 'bg-slate-800 text-slate-400'}`}
+                            >
+                              {cam}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setVisionMode('NORMAL')} className={`px-2.5 py-1 rounded cursor-pointer ${visionMode === 'NORMAL' ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                            Day/Night
+                          </button>
+                          <button onClick={() => setVisionMode('IR_THERMAL')} className={`px-2.5 py-1 rounded cursor-pointer ${visionMode === 'IR_THERMAL' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                            Thermal IR
+                          </button>
+                          <button onClick={() => setShowCrosshairs(!showCrosshairs)} className={`p-1.5 rounded cursor-pointer ${showCrosshairs ? 'bg-cyan-950 text-cyan-400 border border-cyan-800' : 'bg-slate-800 text-slate-500'}`}>
+                            <Icon name="crosshair" className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setShowMotionBox(!showMotionBox)} className={`p-1.5 rounded cursor-pointer ${showMotionBox ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-800 text-slate-500'}`}>
+                            <Icon name="eye" className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: System Information Panel */}
+                  <div className="lg:col-span-4 space-y-4">
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 font-mono m-0">System Information Panel</h3>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">NODE: OK</span>
+                      </div>
+
+                      <div className="divide-y divide-slate-800/80 font-mono text-xs">
+                        <div className="py-2 flex justify-between"><span className="text-slate-400">Connection:</span><span className="text-emerald-400 font-bold">{isTransmitting ? 'CONNECTED' : 'STANDBY'}</span></div>
+                        <div className="py-2 flex justify-between"><span className="text-slate-400">Technology:</span><span className="text-cyan-300 font-semibold">3G / WCDMA FDD</span></div>
+                        <div className="py-2 flex justify-between"><span className="text-slate-400">Bitrate:</span><span className="text-white font-bold">{telemetry.bitrateKbps} kbps</span></div>
+                        <div className="py-2 flex justify-between"><span className="text-slate-400">Latency:</span><span className={`${telemetry.latencyMs > 250 ? 'text-amber-400' : 'text-emerald-300'} font-bold`}>{telemetry.latencyMs} ms</span></div>
+                        <div className="py-2 flex justify-between"><span className="text-slate-400">Packet Loss:</span><span className="text-slate-200">{telemetry.packetLossPct} %</span></div>
+                        <div className="py-2 flex justify-between"><span className="text-slate-400">Signal:</span><span className="text-cyan-300 font-semibold">{signalDbm} dBm (Good)</span></div>
+                        <div className="py-2 flex justify-between"><span className="text-slate-400">QoS:</span><span className="text-indigo-400 font-bold">HIGH PRIORITY</span></div>
+                        <div className="py-2 flex justify-between"><span className="text-slate-400">Authentication:</span><span className="text-emerald-400 font-bold">AUTHENTICATED (AKA)</span></div>
+                        <div className="py-2 flex justify-between"><span className="text-slate-400">Session:</span><span className="text-cyan-300 font-bold">{isTransmitting ? 'ACTIVE (PDP CONTEXT)' : 'READY'}</span></div>
+                      </div>
+
+                      <button onClick={triggerEmergency} className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all">
+                        <Icon name="alarm" className="w-4 h-4" />
+                        <span>Trigger Mobile Emergency Alarm</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* View 2: Architecture & Packets */}
+            {activeTab === 'architecture' && (
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4 mb-4">
+                    <div>
+                      <h3 className="text-base font-bold text-white font-['Outfit'] m-0">End-to-End 3G Communication Architecture</h3>
+                      <p className="text-xs text-slate-400 m-0">Click any node to inspect internal hardware, protocols, and telecommunications roles.</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => sendPacket('VIDEO')} className="px-2.5 py-1 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 text-xs font-mono cursor-pointer">+ Video</button>
+                      <button onClick={() => sendPacket('AUDIO')} className="px-2.5 py-1 rounded bg-purple-950 text-purple-300 border border-purple-800 text-xs font-mono cursor-pointer">+ Audio</button>
+                      <button onClick={() => sendPacket('CONTROL')} className="px-2.5 py-1 rounded bg-amber-950 text-amber-300 border border-amber-800 text-xs font-mono cursor-pointer">+ Control</button>
+                      <button onClick={() => sendPacket('BACKGROUND')} className="px-2.5 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700 text-xs font-mono cursor-pointer">+ Background</button>
+                    </div>
+                  </div>
+
+                  {/* 7 Nodes Topology */}
+                  <div className="overflow-x-auto pb-6 pt-2">
+                    <div className="min-w-[1020px] flex items-center justify-between gap-2 px-2">
+                      {SYSTEM_NODES.map((n, i) => (
+                        <React.Fragment key={n.id}>
+                          <div
+                            onClick={() => setSelectedNode(n)}
+                            className={`w-36 rounded-xl p-3.5 border transition-all cursor-pointer select-none ${
+                              activeNodePulse === n.id ? 'border-cyan-400 bg-cyan-950/70 scale-105 shadow-[0_0_20px_rgba(6,182,212,0.6)]' :
+                              systemState === 'EMERGENCY' ? 'border-red-500 bg-red-950/50' : 'border-slate-800 bg-slate-950 hover:border-cyan-500'
+                            }`}
+                          >
+                            <span className="text-[9px] font-mono text-cyan-400 block font-bold uppercase">{n.category}</span>
+                            <h4 className="text-xs font-bold text-white font-['Outfit'] mt-1 m-0">{n.shortName}</h4>
+                            <p className="text-[10px] text-slate-400 font-mono mt-1 line-clamp-2 leading-tight">{n.subtitle}</p>
+                          </div>
+
+                          {i < SYSTEM_NODES.length - 1 && (
+                            <div className="relative flex-1 min-w-[50px] max-w-[90px] h-14 flex flex-col items-center justify-center">
+                              <span className="text-[9px] font-mono text-slate-500 mb-1">
+                                {['Uu Air', 'Iub', 'Iu-PS', 'Gn/Gi', 'IPsec', 'RTSP/RTP'][i]}
+                              </span>
+                              <div className="w-full h-1 bg-slate-800 rounded relative overflow-hidden" />
+                              <div className="absolute inset-0 pointer-events-none flex items-center">
+                                {packets.filter(p => p.currentLink === i).map(p => (
+                                  <div key={p.id} className="absolute transform -translate-y-1/2" style={{ left: `${Math.min(92, Math.max(8, p.progress * 100))}%`, top: '50%' }}>
+                                    <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded shadow ${p.isAlarm ? 'bg-red-600 text-white animate-bounce glow-red' : 'text-slate-950 font-extrabold'}`} style={{ backgroundColor: p.isAlarm ? '#ef4444' : p.color }}>
+                                      {p.label}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* View 3: QoS & Congestion */}
+            {activeTab === 'qos' && (
+              <div className="space-y-6">
+                {networkLoad === 'CONGESTED' && (
+                  <div className="rounded-xl border border-amber-500/80 bg-amber-950/70 p-4 text-amber-200 text-xs">
+                    <strong className="text-amber-100 font-bold block mb-1">QoS / Admission Mechanisms Protecting Priority Traffic</strong>
+                    <span>Network is CONGESTED. Low-priority background telemetry is throttled so real-time video (256 kbps) passes without delay.</span>
+                  </div>
+                )}
+                {admissionStatus === 'REJECTED' && (
+                  <div className="rounded-xl border border-red-500/80 bg-red-950/80 p-4 text-red-200 text-xs glow-red">
+                    <strong className="text-white font-bold block mb-1">Admission Control: New Session Rejected Due to Insufficient Capacity</strong>
+                    <span>Exceeded 3,840 kbps cell threshold. New camera sessions blocked to preserve quality for active streams.</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Traffic Table */}
+                  <div className="lg:col-span-7 rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 font-mono m-0">UMTS Traffic Prioritization Classes</h3>
+                    <table className="w-full text-left text-xs font-mono">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-slate-400">
+                          <th className="pb-2">Traffic Class</th>
+                          <th className="pb-2">Priority</th>
+                          <th className="pb-2">Delay Target</th>
+                          <th className="pb-2">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/80">
+                        <tr><td className="py-2.5 font-bold text-cyan-300">Real-Time Video</td><td><span className="px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">HIGH</span></td><td>&lt; 150 ms</td><td><button onClick={() => sendPacket('VIDEO')} className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white cursor-pointer">Send</button></td></tr>
+                        <tr><td className="py-2.5 font-bold text-purple-300">Real-Time Audio</td><td><span className="px-2 py-0.5 rounded bg-purple-950 text-purple-400 border border-purple-800">HIGH</span></td><td>&lt; 100 ms</td><td><button onClick={() => sendPacket('AUDIO')} className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white cursor-pointer">Send</button></td></tr>
+                        <tr><td className="py-2.5 font-bold text-amber-300">Control & Signalling</td><td><span className="px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800">HIGH</span></td><td>&lt; 200 ms</td><td><button onClick={() => sendPacket('CONTROL')} className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white cursor-pointer">Send</button></td></tr>
+                        <tr><td className="py-2.5 font-bold text-slate-400">Background Data</td><td><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300">LOW</span></td><td>Unconstrained</td><td><button onClick={() => sendPacket('BACKGROUND')} className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white cursor-pointer">Send</button></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Conditions Slider */}
+                  <div className="lg:col-span-5 rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 font-mono m-0">Network Conditions Controls</h3>
+                    <div className="space-y-2">
+                      <label className="text-xs font-mono text-slate-300 block">Network Load / Cell Congestion:</label>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {['LOW', 'MEDIUM', 'HIGH', 'CONGESTED'].map(l => (
+                          <button key={l} onClick={() => setNetworkLoad(l)} className={`py-1.5 rounded text-xs font-mono font-bold cursor-pointer ${networkLoad === l ? 'bg-cyan-600 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>{l}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs font-mono"><span className="text-slate-400">Signal Strength:</span><span className="text-cyan-300 font-bold">{signalDbm} dBm</span></div>
+                      <input type="range" min="-110" max="-60" value={signalDbm} onChange={e => setSignalDbm(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-800 rounded accent-cyan-500 cursor-pointer" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs font-mono"><span className="text-slate-400">Active Cameras (Admission Test):</span><span className="text-white font-bold">{activeCameras} Units</span></div>
+                      <input type="range" min="1" max="25" value={activeCameras} onChange={e => setActiveCameras(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-800 rounded accent-indigo-500 cursor-pointer" />
+                      <span className="text-[10px] text-slate-500 font-mono block">Max Capacity: 15 cameras (3,840 kbps). Higher triggers rejection.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* View 4: Mobility & Handover */}
+            {activeTab === 'mobility' && (
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl space-y-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                    <h3 className="text-base font-bold text-white font-['Outfit'] m-0">Cell A ↔ Cell B ↔ Cell C Handover Corridor</h3>
+                    <div className="px-3 py-1 rounded bg-indigo-950 text-indigo-300 border border-indigo-600 text-xs font-mono font-bold">
+                      {handoverState.status} ({handoverState.activeCell})
+                    </div>
+                  </div>
+
+                  <div className="relative w-full h-64 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden telecom-grid flex items-center justify-around px-8">
+                    {['Cell A', 'Cell B', 'Cell C'].map((c, idx) => (
+                      <div key={c} className={`w-44 h-44 sm:w-52 sm:h-52 rounded-full border-2 border-dashed flex flex-col items-center justify-center transition-all ${
+                        handoverState.activeCell === c ? 'border-cyan-400 bg-cyan-950/25 shadow-[0_0_25px_rgba(6,182,212,0.3)]' : 'border-slate-800 bg-slate-900/20'
+                      }`}>
+                        <span className="text-sm font-bold text-white font-mono">{c}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">Node B {idx + 1}</span>
+                        <span className="text-xs font-mono text-cyan-300 font-bold mt-1">
+                          {[handoverState.cellASignal, handoverState.cellBSignal, handoverState.cellCSignal][idx]} dB Ec/No
+                        </span>
+                      </div>
+                    ))}
+
+                    <div className="absolute z-20 flex flex-col items-center transition-all duration-300" style={{ left: `${Math.min(88, Math.max(12, (handoverState.distanceKm / 9.0) * 100))}%`, top: '60%' }}>
+                      <div className="p-2 rounded-xl bg-cyan-500 text-slate-950 font-bold shadow-lg animate-pulse">
+                        <Icon name="car" className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-white bg-slate-900 px-2 py-0.5 rounded border border-cyan-500 mt-1 whitespace-nowrap">
+                        CAMERA-01 ({handoverState.distanceKm} km)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
+                    <div className="p-3 rounded-xl bg-slate-950 border border-slate-800"><span className="text-slate-500 block text-[10px]">Serving Cell</span><span className="text-cyan-300 font-bold">{handoverState.activeCell}</span></div>
+                    <div className="p-3 rounded-xl bg-slate-950 border border-slate-800"><span className="text-slate-500 block text-[10px]">Target Candidate</span><span className="text-amber-300 font-bold">{handoverState.targetCell || 'None'}</span></div>
+                    <div className="p-3 rounded-xl bg-slate-950 border border-slate-800"><span className="text-slate-500 block text-[10px]">Successful Handovers</span><span className="text-emerald-400 font-bold">{handoverState.handoversCount} Events</span></div>
+                    <div className="p-3 rounded-xl bg-slate-950 border border-slate-800"><span className="text-slate-500 block text-[10px]">Video Frame Continuity</span><span className="text-cyan-400 font-bold">100% Uninterrupted</span></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* View 5: Capacity Calculator */}
+            {activeTab === 'calculator' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 font-mono m-0">Capacity Dimensioning Parameters</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs font-mono"><span className="text-slate-300">Number of Simultaneous Cameras:</span><span className="text-cyan-400 font-bold">{activeCameras} Units</span></div>
+                      <input type="range" min="1" max="50" value={activeCameras} onChange={e => setActiveCameras(parseInt(e.target.value))} className="w-full h-2 bg-slate-800 rounded accent-cyan-500 cursor-pointer" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs font-mono"><span className="text-slate-300">Bitrate per Camera:</span><span className="text-cyan-400 font-bold">{cameraBitrate} kbps</span></div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[64, 128, 256, 384].map(r => (
+                          <button key={r} onClick={() => setCameraBitrate(r)} className={`py-1.5 rounded text-xs font-mono font-bold cursor-pointer ${cameraBitrate === r ? 'bg-cyan-600 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>{r} kbps</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-6 rounded-2xl border border-cyan-500/40 bg-slate-900/90 p-6 shadow-xl space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-400 font-mono m-0">Aggregated Traffic Calculation</h3>
+                    <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">
+                      <span className="text-xs font-mono uppercase text-slate-400 block mb-1">Total Application Traffic</span>
+                      <div className="text-4xl font-extrabold text-cyan-400 font-['Outfit']">
+                        {((activeCameras * cameraBitrate) / 1000).toFixed(2)} <span className="text-xl text-slate-300">Mbps</span>
+                      </div>
+                      <span className="text-xs font-mono text-slate-400 block mt-1">({activeCameras * cameraBitrate} kbps payload sum)</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800 text-xs font-mono text-emerald-300">
+                      <strong>Assignment Reference Case:</strong> 20 cameras × 256 kbps = <strong>5.12 Mbps</strong>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                      <p className="m-0">"This calculation is before protocol overhead and network engineering margins."</p>
+                      <p className="m-0">"The actual number of supported users depends on cell loading, radio conditions, bearer configuration, spectrum, operator network capacity and selected video quality."</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* View 6: Security & 3GPP AKA */}
+            {activeTab === 'security' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 font-mono text-xs">
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800"><span className="text-slate-500 block text-[10px]">Subscriber:</span><span className="text-emerald-400 font-bold">AUTHENTICATED</span></div>
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800"><span className="text-slate-500 block text-[10px]">Authorization:</span><span className="text-emerald-400 font-bold">AUTHORIZED</span></div>
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800"><span className="text-slate-500 block text-[10px]">Session:</span><span className="text-cyan-400 font-bold">SECURE (CK/IK)</span></div>
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800"><span className="text-slate-500 block text-[10px]">Access Control:</span><span className="text-emerald-400 font-bold">ENABLED</span></div>
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800"><span className="text-slate-500 block text-[10px]">Audit Logging:</span><span className="text-indigo-400 font-bold">ACTIVE</span></div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl space-y-3 font-mono text-xs">
+                  <h3 className="text-sm font-bold uppercase text-slate-200 m-0">Security & Operational Audit Log</h3>
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400">
+                        <th className="pb-2">Time</th><th className="pb-2">Device</th><th className="pb-2">User</th><th className="pb-2">Action</th><th className="pb-2">Status</th><th className="pb-2">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/80">
+                      {auditLogs.map(l => (
+                        <tr key={l.id}>
+                          <td className="py-2 text-slate-400">{l.time}</td>
+                          <td className="py-2 text-cyan-300 font-bold">{l.device}</td>
+                          <td className="py-2 text-slate-300">{l.user}</td>
+                          <td className="py-2 text-white font-medium">{l.action}</td>
+                          <td className="py-2"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${l.status === 'SUCCESS' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-red-950 text-red-400 border border-red-800'}`}>{l.status}</span></td>
+                          <td className="py-2 text-slate-400">{l.details}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* View 7: Operation Scenario */}
+            {activeTab === 'timeline' && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-indigo-500/40 bg-slate-900/90 p-5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-bold text-white font-['Outfit'] m-0">Real-Time Operation Sequence (7 Stages)</h3>
+                    <p className="text-xs text-slate-400 m-0">From camera power-up to mission debrief.</p>
+                  </div>
+                  <button onClick={runFullScenario} disabled={isScenarioRunning} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 cursor-pointer disabled:opacity-40">
+                    <Icon name="play" className="w-3.5 h-3.5" />
+                    <span>RUN FULL SCENARIO</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {SCENARIO_STEPS.map((s, idx) => (
+                    <div key={s.step} className={`rounded-xl border p-4 transition-all ${
+                      isScenarioRunning && scenarioIndex === idx ? 'border-indigo-500 bg-indigo-950/40 shadow-lg' : 'border-slate-800 bg-slate-900/50'
+                    }`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-mono font-bold text-indigo-400">STAGE {s.step}: {s.title}</span>
+                        <span className="text-[10px] font-mono text-cyan-300">{s.state}</span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed m-0">{s.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* View 8: Telemetry & Event Log */}
+            {activeTab === 'analytics' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800"><span className="text-[10px] text-slate-500 block">CURRENT BITRATE</span><div className="text-xl font-bold text-emerald-400">{telemetry.bitrateKbps} kbps</div></div>
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800"><span className="text-[10px] text-slate-500 block">AVERAGE LATENCY</span><div className="text-xl font-bold text-cyan-400">{telemetry.latencyMs} ms</div></div>
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800"><span className="text-[10px] text-slate-500 block">PACKET LOSS</span><div className="text-xl font-bold text-slate-200">{telemetry.packetLossPct} %</div></div>
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800"><span className="text-[10px] text-slate-500 block">PACKETS SENT</span><div className="text-xl font-bold text-indigo-400">{telemetry.packetsSent}</div></div>
+                </div>
+
+                {/* Event Log Component */}
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl space-y-3 font-mono">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
+                    <h3 className="text-xs font-bold uppercase text-slate-200 m-0">Real-Time Event Log ({eventLogs.length} Events)</h3>
+                    <button onClick={() => setEventLogs([])} className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white text-xs cursor-pointer">Clear</button>
+                  </div>
+                  <div className="h-48 overflow-y-auto space-y-1 text-xs pr-1">
+                    {eventLogs.map(l => (
+                      <div key={l.id} className="py-1 px-2 rounded hover:bg-slate-800/40 flex items-start gap-2.5">
+                        <span className="text-slate-500 shrink-0 text-[11px]">[{l.time}]</span>
+                        <span className={`px-1.5 py-0.2 rounded border text-[9px] uppercase shrink-0 ${l.type === 'EMERGENCY' ? 'text-red-400 bg-red-950 border-red-800' : 'text-cyan-400 bg-cyan-950 border-cyan-800'}`}>{l.source}</span>
+                        <span className="text-slate-300 text-[11px]">{l.msg}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* View 9: Specs & References */}
+            {activeTab === 'reference' && (
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl space-y-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-white font-mono m-0">3G Communication System Equipment Table</h3>
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400">
+                        <th className="pb-2">Component</th><th className="pb-2">Purpose</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/80">
+                      <tr><td className="py-2.5 font-bold text-cyan-300">IP camera / mobile camera</td><td className="py-2.5 text-slate-300">Capture video and audio at mobile locations.</td></tr>
+                      <tr><td className="py-2.5 font-bold text-cyan-300">Video encoder</td><td className="py-2.5 text-slate-300">Compress media for wireless transmission (H.264 Baseline, 256 kbps).</td></tr>
+                      <tr><td className="py-2.5 font-bold text-cyan-300">3G modem / UE</td><td className="py-2.5 text-slate-300">Connect camera to 3G network over WCDMA radio interface.</td></tr>
+                      <tr><td className="py-2.5 font-bold text-cyan-300">Node B</td><td className="py-2.5 text-slate-300">Provide WCDMA radio connectivity (3.84 Mcps chip rate, 1500 Hz power control).</td></tr>
+                      <tr><td className="py-2.5 font-bold text-cyan-300">RNC</td><td className="py-2.5 text-slate-300">Manage radio resources, admission control, and seamless soft handover.</td></tr>
+                      <tr><td className="py-2.5 font-bold text-cyan-300">3G packet core</td><td className="py-2.5 text-slate-300">Authentication, mobility support, and IP packet transport with QoS.</td></tr>
+                      <tr><td className="py-2.5 font-bold text-cyan-300">Application / streaming server</td><td className="py-2.5 text-slate-300">Manage sessions and distribute streams to monitoring consoles.</td></tr>
+                      <tr><td className="py-2.5 font-bold text-cyan-300">Monitoring PC / display</td><td className="py-2.5 text-slate-300">Decode and display live video for control-room operators.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+                    <span className="text-cyan-400 font-bold block mb-1">3GPP TS 23.060</span>
+                    <span className="text-slate-300 block">General Packet Radio Service (GPRS); Service description; Stage 2</span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+                    <span className="text-cyan-400 font-bold block mb-1">3GPP TS 25.401</span>
+                    <span className="text-slate-300 block">UTRAN Overall Description (Node B & RNC architecture)</span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+                    <span className="text-cyan-400 font-bold block mb-1">3GPP TS 23.107</span>
+                    <span className="text-slate-300 block">QoS Concept and Architecture (Conversational, Streaming, Interactive, Background)</span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+                    <span className="text-cyan-400 font-bold block mb-1">ITU-R Recommendation M.1457</span>
+                    <span className="text-slate-300 block">Detailed specifications of the radio interfaces of IMT-2000</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* Node Inspector Modal */}
+          {selectedNode && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+              <div className="max-w-xl w-full rounded-2xl border border-cyan-500/40 bg-slate-900 p-6 shadow-2xl relative">
+                <button onClick={() => setSelectedNode(null)} className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white cursor-pointer">
+                  <Icon name="close" className="w-5 h-5" />
+                </button>
+                <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase">{selectedNode.category}</span>
+                <h3 className="text-xl font-bold text-white font-['Outfit'] mt-1 mb-0.5">{selectedNode.name}</h3>
+                <p className="text-xs text-slate-400 font-mono mb-4">{selectedNode.subtitle}</p>
+                <div className="space-y-3 text-xs">
+                  <div className="p-3 rounded-lg bg-slate-950 border border-slate-800"><strong className="text-cyan-300 block mb-1">Purpose:</strong><span className="text-slate-300">{selectedNode.purpose}</span></div>
+                  <div className="p-3 rounded-lg bg-slate-950 border border-slate-800"><strong className="text-cyan-300 block mb-1">Role in Real-Time:</strong><span className="text-slate-300">{selectedNode.roleInRealTime}</span></div>
+                  {selectedNode.subComponents && (
+                    <div className="p-3 rounded-lg bg-slate-950 border border-slate-800"><strong className="text-cyan-300 block mb-1">Hardware Subcomponents:</strong>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {selectedNode.subComponents.map((s, i) => (
+                          <span key={i} className="px-2 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono text-[10px]">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <footer className="border-t border-slate-900 bg-slate-950/80 py-5 px-4 lg:px-8 mt-12 text-xs font-mono text-slate-500">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+              <span className="text-slate-400 font-semibold">Design of a 3G Communication System for Real-Time Applications</span>
+              <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                <span>UMTS WCDMA FDD (3.84 Mcps)</span>
+                <span>•</span>
+                <span>3GPP Release 99/4/5</span>
+                <span>•</span>
+                <span className="text-cyan-400 font-bold">Academic Simulation Model</span>
+              </div>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
